@@ -1,0 +1,8 @@
+/bin/
+/bin/
+*.class
+.DS_Store
+/pages/*
+!/pages/.gitkeep
+.env
+*.env

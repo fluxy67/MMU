@@ -1,74 +1,96 @@
-
 package mmu;
 
 import java.util.Scanner;
-import java.nio.charset.StandardCharsets;
 
 import mmu.storage.PageStorage;
 import mmu.storage.FilePageStorage;
-import mmu.storage.MySqlPageStorage;
+import mmu.replacement.PageReplacementPolicy;
+import mmu.replacement.FifoPageReplacement;
 
 public class Main {
 
-	// Pour les accès Mysql
-	private static final String host = System.getenv("MYSQL_HOST");
-	private static final int port = 3307;
-	private static final String database = "testdb";
-	private static final String user = System.getenv("MYSQL_USER");
-	private static final String password = System.getenv("MYSQL_PASSWORD");
-	
+    public static void main(String[] args) {
 
-	
-	public static void main(String[] args) {
+        // Configuration
+        final int MEMORY_SIZE = 5;
 
-		Scanner scanner = new Scanner(System.in);
-		
-		// ici on choisit de stocker les pages sur disque
-		// PageStorage filestorage = new FilePageStorage("pages");
-		// ici on choisit de stocker les pages dans Mysql
-		PageStorage storage = new MySqlPageStorage(host,port,database,user,password);
-				
+        PageStorage storage = new FilePageStorage("pages");
+        PageReplacementPolicy policy = new FifoPageReplacement();
 
+        MMU mmu = new MMU(MEMORY_SIZE, storage, policy);
 
-		while (true) {
+        Scanner scanner = new Scanner(System.in);
 
-			System.out.print("\nLire (r), Écrire (w), Quitter (q) : ");
-			String action = scanner.nextLine();
+        boolean running = true;
 
-			if (action.equals("q")) {
-				break;
-			}
+        while (running) {
 
-			if (!action.equals("r") && !action.equals("w")) {
-				System.out.println("Commande inconnue");
-				continue;
-			}
+            System.out.println("\n===== SIMULATEUR MMU =====");
+            System.out.println("R - Lire une page");
+            System.out.println("W - Écrire une page");
+            System.out.println("P - Afficher la mémoire");
+            System.out.println("S - Sauvegarder (flush)");
+            System.out.println("Q - Quitter");
+            System.out.print("Choix : ");
 
-			System.out.print("Numéro de page : ");
-			int pageNumber = Integer.parseInt(scanner.nextLine());
+            String choice = scanner.nextLine();
 
-			if (action.equals("w")) {
+            try {
 
-				System.out.print("Contenu de la page : ");
-				String content = scanner.nextLine();
+                switch (choice) {
 
-				storage.writePage(pageNumber, content);
+                    case "R": {
+                        System.out.print("Numéro de page : ");
+                        int pageNumber = Integer.parseInt(scanner.nextLine());
 
-				System.out.println("Page écrite");
+                        String content = mmu.readPage(pageNumber);
 
-			} else {
+                        System.out.println("Page " + pageNumber
+                                + " : " + content);
+                        break;
+                    }
 
-				String content = storage.readPage(pageNumber);
+                    case "W": {
+                        System.out.print("Numéro de page : ");
+                        int pageNumber = Integer.parseInt(scanner.nextLine());
 
-				if (content == null) {
-					System.out.println("La page n'existe pas");
-				} else {
-					System.out.println("Contenu : " + content);
-				}
-			}
-		}
+                        System.out.print("Contenu : ");
+                        String content = scanner.nextLine();
 
-		scanner.close();
-		System.out.println("Fin du programme");
-	}
+                        mmu.writePage(pageNumber, content);
+
+                        System.out.println("Page " + pageNumber
+                                + " modifiée.");
+                        break;
+                    }
+
+                    case "P":
+                        mmu.printMemory();
+                        break;
+
+                    case "S":
+                        mmu.flush();
+                        System.out.println("Mémoire sauvegardée.");
+                        break;
+
+                    case "Q":
+                        mmu.flush();
+                        running = false;
+                        System.out.println("Fin du programme.");
+                        break;
+
+                    default:
+                        System.out.println("Choix invalide.");
+                }
+
+            } catch (NumberFormatException e) {
+                System.out.println("Numéro de page invalide.");
+
+            } catch (Exception e) {
+                System.out.println("Erreur : " + e.getMessage());
+            }
+        }
+
+        scanner.close();
+    }
 }
